@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Work Hours">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Work Hours</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--danger:#dc2626;--nav:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"SF Pro Text",Arial,sans-serif;padding-bottom:88px}
+header{padding:calc(14px + env(safe-area-inset-top)) 18px 14px;background:var(--card);position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:21px;margin:0 0 14px}.sub{color:var(--muted);font-size:14px}
+main{max-width:720px;margin:auto;padding:16px}.screen{display:none}.screen.active{display:block}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px #0000000d}
+label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:600}
+input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:11px;background:#fff;color:var(--text)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}
+button{border:0;border-radius:11px;padding:12px 15px;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:#fff}.secondary{background:#e5e7eb;color:#111827}.danger{background:#fee2e2;color:var(--danger)}.small{padding:8px 10px;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.stat{font-size:30px;font-weight:800}.money{font-variant-numeric:tabular-nums}.muted{color:var(--muted)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700}
+nav{position:fixed;bottom:0;left:0;right:0;height:76px;padding-bottom:env(safe-area-inset-bottom);background:var(--nav);border-top:1px solid var(--line);display:flex;justify-content:space-around;z-index:10}
+nav button{background:transparent;color:var(--muted);border-radius:0;flex:1;font-size:12px}nav button.active{color:var(--accent)}nav .ico{font-size:21px;display:block;margin-bottom:2px}
+.empty{text-align:center;color:var(--muted);padding:28px 10px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px 5px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 15px;border-radius:10px;display:none;z-index:20}
+@media(max-width:420px){.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<header><h1>Work Hours</h1><div class="sub" id="headerSub">Track hours and cost by department</div></header>
+<main>
+<section id="home" class="screen active">
+  <div class="card">
+    <div class="sub">This month</div>
+    <div class="stat" id="monthHours">0.00 h</div>
+    <div class="sub money" id="monthCost">£0.00</div>
+  </div>
+  <div class="card"><h2>By department</h2><div id="deptSummary"></div></div>
+  <div class="card">
+    <h2>Quick entry</h2>
+    <div class="grid">
+      <div class="full"><label>Department</label><select id="quickDept"></select></div>
+      <div><label>Date</label><input id="quickDate" type="date"></div>
+      <div></div>
+      <div><label>Start</label><input id="quickStart" type="time"></div>
+      <div><label>Finish</label><input id="quickFinish" type="time"></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addQuickEntry()">Add entry</button><button class="secondary" onclick="show('entries')">View entries</button></div>
+  </div>
+</section>
+
+<section id="entries" class="screen">
+  <div class="card"><h2>Add work entry</h2>
+    <div class="grid">
+      <div class="full"><label>Department</label><select id="entryDept"></select></div>
+      <div><label>Date</label><input id="entryDate" type="date"></div>
+      <div></div>
+      <div><label>Start</label><input id="entryStart" type="time"></div>
+      <div><label>Finish</label><input id="entryFinish" type="time"></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addEntry()">Add entry</button></div>
+    <div class="sub" style="margin-top:10px">If finish is earlier than start, the shift is treated as crossing midnight.</div>
+  </div>
+  <div class="card"><h2>Entries</h2><div id="entryList"></div></div>
+</section>
+
+<section id="departments" class="screen">
+  <div class="card"><h2>Add department</h2>
+    <div class="grid"><div><label>Department</label><input id="newDept" placeholder="e.g. Engineering"></div><div><label>Hourly rate (£)</label><input id="newRate" type="number" min="0" step="0.01" placeholder="25.00"></div></div>
+    <div class="actions"><button class="primary" onclick="addDepartment()">Add department</button></div>
+  </div>
+  <div class="card"><h2>Departments & rates</h2><div id="departmentList"></div></div>
+</section>
+
+<section id="reports" class="screen">
+  <div class="card"><h2>Monthly report</h2>
+    <label>Month</label><input id="reportMonth" type="month">
+    <div id="reportOutput" style="margin-top:14px"></div>
+    <div class="actions"><button class="primary" onclick="shareReport()">Share report</button><button class="secondary" onclick="downloadReport()">Save report</button></div>
+  </div>
+</section>
+
+<section id="settings" class="screen">
+  <div class="card"><h2>Data</h2>
+    <p class="sub">Your records are stored locally in this browser on this iPhone. There is no account or server database.</p>
+    <div class="actions"><button class="secondary" onclick="exportData()">Export backup</button><button class="secondary" onclick="importData()">Import backup</button><button class="danger" onclick="clearAll()">Delete all data</button></div>
+    <input id="importFile" type="file" accept="application/json" hidden onchange="doImport(event)">
+  </div>
+  <div class="card"><h2>Month-end reports</h2><p class="sub">When you open the app, it checks whether a month has changed since your last visit. You can then generate the completed month's report.</p><button class="secondary" onclick="openPreviousReport()">Open previous month report</button></div>
+</section>
+</main>
+<nav>
+<button data-screen="home" class="active" onclick="show('home')"><span class="ico">⌂</span>Home</button>
+<button data-screen="entries" onclick="show('entries')"><span class="ico">＋</span>Entries</button>
+<button data-screen="departments" onclick="show('departments')"><span class="ico">▦</span>Departments</button>
+<button data-screen="reports" onclick="show('reports')"><span class="ico">▤</span>Reports</button>
+<button data-screen="settings" onclick="show('settings')"><span class="ico">⚙</span>Settings</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+const KEY='workhours.v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{departments:[],entries:[],lastOpen:null};
+const $=id=>document.getElementById(id);
+const money=n=>'£'+Number(n).toFixed(2);
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function toast(s){let t=$('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function today(){return new Date().toISOString().slice(0,10)}
+function thisMonth(){return today().slice(0,7)}
+function show(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(s).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===s));render()}
+function populateSelects(){
+ const opts=db.departments.map(d=>`<option value="${d.id}">${esc(d.name)} — ${money(d.rate)}/h</option>`).join('');
+ $('quickDept').innerHTML=opts||'<option value="">Add a department first</option>';
+ $('entryDept').innerHTML=opts||'<option value="">Add a department first</option>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function duration(start,finish){let [h,m]=start.split(':').map(Number),[h2,m2]=finish.split(':').map(Number);let a=h*60+m,b=h2*60+m2;if(b<=a)b+=1440;return (b-a)/60}
+function addEntryCommon(deptId,date,start,finish){
+ if(!deptId||!date||!start||!finish){toast('Please complete all fields');return}
+ let d=db.departments.find(x=>x.id===deptId); if(!d){toast('Add a department first');return}
+ db.entries.push({id:crypto.randomUUID(),deptId,date,start,finish});save();toast('Entry added');render()
+}
+function addQuickEntry(){addEntryCommon($('quickDept').value,$('quickDate').value,$('quickStart').value,$('quickFinish').value)}
+function addEntry(){addEntryCommon($('entryDept').value,$('entryDate').value,$('entryStart').value,$('entryFinish').value)}
+function addDepartment(){
+ let name=$('newDept').value.trim(),rate=Number($('newRate').value);
+ if(!name||rate<0||!Number.isFinite(rate)){toast('Enter a department and valid rate');return}
+ db.departments.push({id:crypto.randomUUID(),name,rate});save();$('newDept').value='';$('newRate').value='';toast('Department added');render()
+}
+function deleteDept(id){if(db.entries.some(e=>e.deptId===id)){alert('This department has entries. Delete those entries first.');return}if(confirm('Delete this department?')){db.departments=db.departments.filter(d=>d.id!==id);save();render()}}
+function deleteEntry(id){if(confirm('Delete this entry?')){db.entries=db.entries.filter(e=>e.id!==id);save();render()}}
+function renderHome(){
+ let m=thisMonth(), rows=db.entries.filter(e=>e.date.startsWith(m)), hours=0,cost=0;
+ rows.forEach(e=>{let d=db.departments.find(x=>x.id===e.deptId);let h=duration(e.start,e.finish);hours+=h;cost+=h*(d?.rate||0)});
+ $('monthHours').textContent=hours.toFixed(2)+' h';$('monthCost').textContent=money(cost);
+ let html=db.departments.map(d=>{let es=rows.filter(e=>e.deptId===d.id),h=es.reduce((a,e)=>a+duration(e.start,e.finish),0);return `<div class="row"><div><b>${esc(d.name)}</b><div class="sub">${money(d.rate)}/h</div></div><div style="text-align:right"><b>${h.toFixed(2)} h</b><div class="sub">${money(h*d.rate)}</div></div></div>`}).join('');
+ $('deptSummary').innerHTML=html||'<div class="empty">Add a department to get started.</div>';
+}
+function renderEntries(){
+ let es=[...db.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.start.localeCompare(a.start));
+ $('entryList').innerHTML=es.length?es.map(e=>{let d=db.departments.find(x=>x.id===e.deptId),h=duration(e.start,e.finish);return `<div class="row"><div><b>${esc(d?.name||'Unknown')}</b><div class="sub">${e.date} · ${e.start}–${e.finish} · ${h.toFixed(2)} h · ${money(h*(d?.rate||0))}</div></div><button class="danger small" onclick="deleteEntry('${e.id}')">Delete</button></div>`}).join(''):'<div class="empty">No entries yet.</div>';
+}
+function renderDepts(){
+ $('departmentList').innerHTML=db.departments.length?db.departments.map(d=>`<div class="row"><div><b>${esc(d.name)}</b><div class="sub">${money(d.rate)} per hour</div></div><button class="danger small" onclick="deleteDept('${d.id}')">Delete</button></div>`).join(''):'<div class="empty">No departments yet.</div>';
+}
+function reportData(month){
+ let es=db.entries.filter(e=>e.date.startsWith(month)), totals=db.departments.map(d=>{let h=es.filter(e=>e.deptId===d.id).reduce((a,e)=>a+duration(e.start,e.finish),0);return {name:d.name,rate:d.rate,hours:h,cost:h*d.rate}}).filter(x=>x.hours>0);
+ return {month,totals,hours:totals.reduce((a,x)=>a+x.hours,0),cost:totals.reduce((a,x)=>a+x.cost,0)}
+}
+function renderReport(){
+ let m=$('reportMonth').value||thisMonth(),r=reportData(m);
+ $('reportOutput').innerHTML=`<div class="row"><b>Total hours</b><b>${r.hours.toFixed(2)}</b></div><div class="row"><b>Total cost</b><b>${money(r.cost)}</b></div>`+(r.totals.length?`<table><thead><tr><th>Department</th><th>Rate</th><th>Hours</th><th>Cost</th></tr></thead><tbody>${r.totals.map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.rate)}</td><td>${x.hours.toFixed(2)}</td><td>${money(x.cost)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No work recorded for this month.</div>');
+}
+function reportText(month){let r=reportData(month);let lines=[`WORK HOURS REPORT — ${month}`,``,`Total hours: ${r.hours.toFixed(2)}`,`Total cost: ${money(r.cost)}`,``,`Department | Rate | Hours | Cost`];r.totals.forEach(x=>lines.push(`${x.name} | ${money(x.rate)} | ${x.hours.toFixed(2)} | ${money(x.cost)}`));return lines.join('\n')}
+async function shareReport(){let m=$('reportMonth').value||thisMonth(),text=reportText(m);if(navigator.share){try{await navigator.share({title:`Work Hours Report ${m}`,text})}catch(e){}}else{await navigator.clipboard.writeText(text);toast('Report copied to clipboard')}}
+function downloadReport(){let m=$('reportMonth').value||thisMonth(),blob=new Blob([reportText(m)],{type:'text/plain'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`work-hours-${m}.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='work-hours-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function importData(){$('importFile').click()}
+function doImport(ev){let f=ev.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.departments||!x.entries)throw 0;db=x;save();render();toast('Backup imported')}catch(e){alert('Invalid backup file')}};r.readAsText(f)}
+function clearAll(){if(confirm('Delete ALL departments and entries? This cannot be undone unless you have a backup.')){db={departments:[],entries:[],lastOpen:null};save();render()}}
+function openPreviousReport(){let d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);$('reportMonth').value=d.toISOString().slice(0,7);show('reports')}
+function render(){populateSelects();renderHome();renderEntries();renderDepts();renderReport()}
+$('quickDate').value=today();$('entryDate').value=today();$('reportMonth').value=thisMonth();$('reportMonth').addEventListener('change',renderReport);
+function monthChangeCheck(){let now=thisMonth();if(db.lastOpen&&db.lastOpen!==now){let old=db.lastOpen;setTimeout(()=>{if(confirm(`A new month has started. Generate the report for ${old}?`)){ $('reportMonth').value=old;show('reports')}},500)}db.lastOpen=now;save()}
+render();monthChangeCheck();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
